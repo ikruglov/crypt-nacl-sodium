@@ -4994,72 +4994,6 @@ new(class, bytes, ...)
     OUTPUT:
         RETVAL
 
-SV *
-_overload_mult(self, other, swapped)
-    SV * self
-    SV * other
-    SV * swapped
-    PREINIT:
-        DataBytesLocker* sbl = GetBytesLocker(aTHX_ self);
-    INIT:
-        DataBytesLocker *bl;
-        unsigned int count = 0;
-        unsigned int cur = 0;
-    OVERLOAD: x
-    CODE:
-    {
-        if ( sbl->locked ) {
-            croak("Unlock BytesLocker object before accessing the data");
-        }
-
-        count = SvUV(other);
-
-        bl = InitDataBytesLocker(aTHX_ sbl->length * count);
-
-        while(count--) {
-            memcpy(bl->bytes + sbl->length * cur++, sbl->bytes, sbl->length);
-        }
-
-        RETVAL = DataBytesLocker2SV(aTHX_ bl);
-    }
-    OUTPUT:
-        RETVAL
-
-
-SV *
-_overload_concat(self, other, swapped)
-    SV * self
-    SV * other
-    SV * swapped
-    PREINIT:
-        DataBytesLocker* sbl = GetBytesLocker(aTHX_ self);
-    INIT:
-        unsigned char *buf;
-        STRLEN buf_len;
-        DataBytesLocker *bl;
-    OVERLOAD: .
-    CODE:
-    {
-        if ( sbl->locked ) {
-            croak("Unlock BytesLocker object before accessing the data");
-        }
-
-        buf = (unsigned char *)SvPV(other, buf_len);
-
-        bl = InitDataBytesLocker(aTHX_ sbl->length + buf_len);
-
-        if ( SvTRUE(swapped) ) {
-            memcpy(memcpy(bl->bytes, buf, buf_len) + buf_len, sbl->bytes, sbl->length);
-        }
-        else {
-            memcpy(memcpy(bl->bytes, sbl->bytes, sbl->length) + sbl->length, buf, buf_len);
-        }
-
-        RETVAL = DataBytesLocker2SV(aTHX_ bl);
-    }
-    OUTPUT:
-        RETVAL
-
 void
 _overload_bool(self, ...)
     SV * self
@@ -5153,7 +5087,6 @@ _overload_eq(self, other, swapped)
         }
     }
 
-
 void
 _overload_ne(self, other, swapped)
     SV * self
@@ -5189,26 +5122,6 @@ _overload_ne(self, other, swapped)
         } else {
             XSRETURN_NO;
         }
-    }
-
-void
-_overload_str(self, ...)
-    SV * self
-    PREINIT:
-        DataBytesLocker* sbl = GetBytesLocker(aTHX_ self);
-    INIT:
-        SV * pv;
-    OVERLOAD: \"\"
-    PPCODE:
-    {
-        if ( sbl->locked ) {
-            croak("Unlock BytesLocker object before accessing the data");
-        }
-
-        pv = newSVpvn((unsigned char *)sbl->bytes, sbl->length);
-        SvREADONLY_on(pv);
-
-        mXPUSHs(pv);
     }
 
 void
