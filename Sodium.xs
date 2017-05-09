@@ -1310,13 +1310,12 @@ mac(self, msg, key)
         hmacsha512256 = 3
     INIT:
         STRLEN msg_len;
-        STRLEN key_len;
         unsigned char * msg_buf;
-        unsigned char * key_buf;
+        unsigned char * mac_buf;
         unsigned int mac_size;
         unsigned int key_size;
         int (*mac_function)(unsigned char *, const unsigned char *, unsigned long long, const unsigned char *);
-        DataBytesLocker *bl;
+        DataBytesLocker *kbl;
     CODE:
     {
         PERL_UNUSED_VAR(self);
@@ -1347,17 +1346,30 @@ mac(self, msg, key)
                 mac_function = &crypto_auth;
         }
 
-        key_buf = (unsigned char *)SvPV(key, key_len);
-        if ( key_len != key_size ) {
+        kbl = GetBytesLocker(aTHX_ key);
+        if ( kbl->locked ) {
+            croak("Unlock BytesLocker object before accessing the data");
+        }
+
+        if ( kbl->length != key_size ) {
             croak("Invalid key");
         }
 
+        mac_buf = NULL;
+        Newx(mac_buf, mac_size, unsigned char);
+        if ( mac_buf == NULL ) {
+            croak("Could not allocate memory");
+        }
+
         msg_buf = (unsigned char *)SvPV(msg, msg_len);
+        (*mac_function)( mac_buf, msg_buf, msg_len, kbl->bytes);
 
-        bl = InitDataBytesLocker(aTHX_ mac_size);
-        (*mac_function)( bl->bytes, msg_buf, msg_len, key_buf);
-
-        RETVAL = DataBytesLocker2SV(aTHX_ bl);
+        RETVAL = newSV(0);
+        SvUPGRADE(RETVAL, SVt_PV);
+        SvPVX(RETVAL) = mac_buf;
+        SvLEN_set(RETVAL, mac_size);
+        SvCUR_set(RETVAL, mac_size);
+        SvPOK_on(RETVAL);
     }
     OUTPUT:
         RETVAL
