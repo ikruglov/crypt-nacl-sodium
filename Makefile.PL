@@ -148,7 +148,7 @@ EOF
             source => $test_file_name,
             include_dirs => [ '.', @include_dirs ],
         );
-    };
+    } or warn "Failed to compile aes-test. AES256GCM will not work whereas CPU might still support it. Check errors above for details.";
     unlink $test_file_name;
 
     return unless $file_obj;
@@ -158,7 +158,7 @@ EOF
             objects => $file_obj,
             extra_linker_flags => $libsodium_path,
         );
-    };
+    } or warn "Failed to link aes-test. AES256GCM will not work whereas CPU might still support it. Check errors above for details.";
     unlink $file_obj;
 
     return unless $file_exe;
